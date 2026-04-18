@@ -1,0 +1,111 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Paper Trading Dashboard</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        body { font-family: -apple-system, system-ui, sans-serif; }
+        .card { background: #1e293b; border-radius: 8px; padding: 16px; }
+        table { width: 100%; border-collapse: collapse; }
+        th, td { padding: 8px 12px; text-align: left; border-bottom: 1px solid #334155; }
+        th { background: #0f172a; color: #94a3b8; font-size: 0.8rem; }
+        .pos { color: #4ade80; }
+        .neg { color: #f87171; }
+        .long { color: #22d3ee; }
+        .short { color: #fb923c; }
+        .flat { color: #64748b; }
+    </style>
+</head>
+<body class="bg-slate-900 text-slate-100 p-6">
+    <div class="max-w-7xl mx-auto">
+        <div class="flex items-center justify-between mb-6">
+            <div>
+                <h1 class="text-3xl font-bold">Paper Trading Dashboard</h1>
+                <p class="text-slate-400 text-sm">Simulated only — no real money at risk</p>
+            </div>
+            <div class="text-right">
+                <span class="bg-blue-600 text-white px-3 py-1 rounded text-sm">PAPER</span>
+                <p class="text-slate-400 text-xs mt-1" id="last-update">—</p>
+            </div>
+        </div>
+
+        <div class="grid grid-cols-3 gap-4 mb-6">
+            <div class="card">
+                <p class="text-slate-400 text-sm">Total Equity</p>
+                <p class="text-3xl font-bold" id="total-equity">$0.00</p>
+            </div>
+            <div class="card">
+                <p class="text-slate-400 text-sm">Open Positions</p>
+                <p class="text-3xl font-bold" id="open-positions">0</p>
+            </div>
+            <div class="card">
+                <p class="text-slate-400 text-sm">Strategies</p>
+                <p class="text-3xl font-bold" id="strategies-count">0</p>
+            </div>
+        </div>
+
+        <div class="card mb-6">
+            <h2 class="text-lg font-semibold mb-3">Open Positions</h2>
+            <div id="positions-table">No open positions</div>
+        </div>
+
+        <div class="card mb-6">
+            <h2 class="text-lg font-semibold mb-3">All Strategies</h2>
+            <table>
+                <thead>
+                    <tr>
+                        <th>Name</th><th>Equity</th><th>Return</th>
+                        <th>DD</th><th>Side</th><th>Entry</th><th>Pyr</th>
+                    </tr>
+                </thead>
+                <tbody id="strategies-body"></tbody>
+            </table>
+        </div>
+
+        <div class="card">
+            <h2 class="text-lg font-semibold mb-3">Recent Logs</h2>
+            <pre id="logs" class="text-xs text-slate-400 overflow-auto max-h-96"></pre>
+        </div>
+    </div>
+
+    <script>
+        async function refresh() {
+            try {
+                const s = await (await fetch("/api/status")).json();
+                document.getElementById("total-equity").textContent = "$" + s.total_equity.toLocaleString();
+                document.getElementById("open-positions").textContent = s.open_positions;
+                document.getElementById("strategies-count").textContent = s.strategies;
+                document.getElementById("last-update").textContent = "Updated " + s.last_update;
+
+                const pos = (await (await fetch("/api/positions")).json()).positions;
+                const pt = document.getElementById("positions-table");
+                if (pos.length === 0) pt.textContent = "No open positions";
+                else {
+                    pt.innerHTML = "<table><thead><tr><th>Strategy</th><th>Side</th><th>Entry</th><th>Qty</th></tr></thead><tbody>" +
+                        pos.map(p => `<tr><td>${p.strategy}</td><td class="${p.side}">${p.side.toUpperCase()}</td><td>$${p.entry}</td><td>${p.qty.toFixed(4)}</td></tr>`).join("") +
+                        "</tbody></table>";
+                }
+
+                const strats = (await (await fetch("/api/strategies")).json()).strategies;
+                document.getElementById("strategies-body").innerHTML = strats.map(r => `
+                    <tr>
+                        <td>${r.name}</td>
+                        <td>$${r.equity.toFixed(2)}</td>
+                        <td class="${r.ret_pct >= 0 ? 'pos' : 'neg'}">${r.ret_pct >= 0 ? '+' : ''}${r.ret_pct}%</td>
+                        <td class="neg">${r.drawdown.toFixed(1)}%</td>
+                        <td class="${r.side}">${r.side}</td>
+                        <td>${r.entry_price ? '$' + r.entry_price : '—'}</td>
+                        <td>${r.pyramids}</td>
+                    </tr>
+                `).join("");
+
+                const logs = (await (await fetch("/api/logs?lines=30")).json()).lines;
+                document.getElementById("logs").textContent = logs.join("\n");
+            } catch (e) { console.error(e); }
+        }
+        refresh();
+        setInterval(refresh, 5000);
+    </script>
+</body>
+</html>

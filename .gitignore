@@ -1,0 +1,10 @@
+__pycache__/
+*.pyc
+*.tmp
+*.bak
+.env
+data/paper_trading/*.csv
+data/paper_trading/*.log
+data/paper_trading/state.json
+data/paper_trading/state.json.bak
+.DS_Store

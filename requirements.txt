@@ -1,0 +1,6 @@
+# Paper Trading Bot - Dependencies
+# Note: NO eth_account, NO hyperliquid-sdk — this repo cannot place real orders
+fastapi>=0.100.0
+uvicorn>=0.23.0
+jinja2>=3.1.0
+requests>=2.31.0
